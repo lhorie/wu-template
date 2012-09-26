@@ -1,160 +1,177 @@
 # Wu
 
-A "less-is-more" templating engine. It's some 200 lines of code, but it has a JIT compiler and it is extensible via hooks.
+A "less-is-more" templating engine. It features minimalist syntax, extensibility via hooks, JIT compilation and a modest footprint (< 200 lines of code).
 
-## Binding data
 
-    hello.php
-    ---------
-    <?php
-    Template::render('hello.html', ['name' => 'John']);
-    ?>
-    
-    hello.html
-    ----------
-    <p>Hello :name:</p>
 
-    output
-    ------
-    <p>Hello John</p>
+## Design goals
 
-## Arrays
+- terse and predictable syntax, without ad-hoc features for specific tasks
+- extensibility and expressiveness
+- resonable performance
 
-    nav.php
-    ---------
-    <?php
-    Template::render('nav.html', [
-        'nav' => [
-            ['url' => '/', 'text' => 'Home'],
-            ['url' => '/about', 'text' => 'About'],
-            ['url' => '/contact', 'text' => 'Contact']
-        ]
-    ]);
-    ?>
-    
-    nav.html
-    ----------
-    <ul :nav:>
-        <li><a href=":url:">:text:</a></li>
-    </ul>
 
-    output
-    ------
-    <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
-    </ul>
 
-## Objects
+## Syntax
 
-    person.php
-    ---------
-    <?php
-    class Person {
-        var $first;
-        var $last;
+Here's a template example:
 
-        function Person($first, $last) {
-            $this->first = $first;
-            $this->last = $last;
-        }
-    }
+```html
+<section :chat:>
+	<blockquote>:content:</blockquote>
+	<small>:author:</small>
+</section>
+```
 
-    Template::render('person.html', [
-        'person' => new Person('John', 'Doe')
-    ]);
-    ?>
-    
-    person.html
-    ----------
-    <table>
-        <tr>
-            <th>First Name</th>
-            <th>Last Name</th>
-        </tr>
-        <tr :person:>
-            <td>:first:</td>
-            <td>:last:</td>
-        </tr>
-    </table>
+The data to populate the template above might look like this:
 
-    output
-    ------
-    <table>
-        <tr>
-            <th>First Name</th>
-            <th>Last Name</th>
-        </tr>
-        <tr>
-            <td>John</td>
-            <td>Doe</td>
-        </tr>
-    </table>
+```php
+<?php
+$greeting = [
+	'author' => 'Teddy',
+	'content' => 'Hello world'
+];
 
-## Includes
+$data['chat'] = $greeting;
 
-    hello.php
-    ---------
-    <?php
-    Template::render('hello.html');
-    ?>
-    
-    hello.html
-    ----------
-    <div>:hi.html:</div>
+echo Template::render('template.html', $data);
+?>
+```
 
-    hi.html
-    ----------
-    <p>Hi World</p>
+The output would look like this:
 
-    output
-    ------
-    <div><p>Hi World</p></div>
+```html
+<section>
+	<blockquote>Hello world</blockquote>
+	<small>Teddy</small>
+</section>
+```
+
+You can display several chat messages without changing the template:
+
+```php
+<?php
+$data['chat'] = [
+	['author' => 'Teddy', 'content' => 'Hello world'],
+	['author' => 'World', 'content' => 'Hi Teddy']
+];
+
+echo Template::render('template.html', $data);
+?>
+```
+	
+The template automatically takes care of looping through them:
+
+```html	
+<section>
+	<blockquote>Hello world</blockquote>
+	<small>Teddy</small>
+	
+	<blockquote>Hi Teddy</blockquote>
+	<small>World</small>
+</section>
+```
+
+### Includes
+
+Templates support static inclusion of other templates. To illustrate, we could split the previous template into two files like this:
+
+```html
+<section :chat:>:chat.html:</section>
+
+<!--chat.html-->
+<blockquote>:content:</blockquote>
+<small>:author:</small>
+```
+
+### A note on data types and implementation details
+
+Templates do two types of variable binding: 
+
+- collection binding: to bind a collection, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
+  Attempting to bind anything that is not either an array or an object will cause errors. Note that these variable names must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/)
+- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template
+
+
 
 ## Hooks
 
-    blog.php
-    ---------
-    <?php
-    Template::render('blog.html', [
-        'entries' => [
-            ['title' => 'Hello world', 'body' => '<p>Hello world</p>'],
-            ['title' => 'Bye world', 'body' => '<p>Bye world</p>']
-        ],
-        'archived' => []
-    ]);
-    ?>
-    
-    blog.html
-    ----------
-    <!--the 'raw' hook allows us to print unescaped html-->
-    <!--the 'else' hook allows us to print alternate content when there's no data to display-->
-    <div :entries:>
-        <h1>:title:</h1>
-        <div :raw:>:body:</div>
-    </div>
-    <div :archived:>
-        <!--todo-->
-    </div>
-    <div :else:>No archived entries</div>
+Template functionality can be extended via hooks. There are two hooks out of the box: `:else:` and `:raw:`
 
-    output
-    ------
+### `:else:` Hook
 
-    <div>
-        <h1>Hello world</h1>
-        <p>Hello world</p>
-    </div>
+This hook works like the else statement in Python:
 
-    <div>
-        <h1>Bye world</h1>
-        <p>Bye world</p>
-    </div>
-    <div>No archived entries</div>
+```html
+<section :chat:>:chat.html:</section>
+<div :else:>Be the first to say something</div>
+```
 
-##API
+### `:raw: Hook`
 
-    Template::render(string $filename, array $data)
+Templates escape HTML in values by default. This hook allows a developer to unescape it and print arbitrary markup.
 
-    Todo: document compiler
+If we wanted to allow HTML content in a chat message, we could do this:
+
+```html
+<blockquote :raw:>:content:</blockquote>
+<small>:author:</small>
+```
+
+
+
+## Creating custom hooks
+
+Any defined class whose name ends in `Hook` is considered a hook. For example, the `:else:` hook is implemented in the `ElseHook` class.
+
+There are two ways to implement hooks:
+
+- `format` hooks can be used to format values prior to printing them
+- `macro` hooks can modify the template's DOM at compile time.
+
+### `format` Hooks
+
+These hooks must have a static method called `format`, which takes a printable value as a parameter and returns a printable value.
+
+The `:raw:` hook is an example of `format` hooks:
+
+```php
+<?php
+class RawHook {
+	static function format($value) {
+		return htmlspecialchars_decode($value, ENT_QUOTES | ENT_HTML5);
+	}
+}
+?>
+```
+
+### `macro` Hooks
+
+These hooks must have a static method called `macro`, which takes a DOMNode as a parameter.
+
+`macro` hooks are meant to allow you to insert arbitrary PHP code at arbitrary points in the DOM. PHP code can be inserted by creating DOMCdataSection nodes.
+
+Don't use DOMProcessingInstruction nodes to create PHP tags, since HTML processing instructions conform to the SGML standard and therefore aren't valid PHP tags.
+
+Also, don't modify DOM elements that are ancestors of the one passed as a parameter, as doing so is both unexpected by macro users and can cause conflicts with other macros.
+
+To see an example of a `macro` hook, see elsehook.php
+
+### A note on hook development
+
+Note that for `render()` calls, templates are only recompiled if they have been modified. While developing hooks, you can manually force compilation:
+
+```php
+<?php
+Template::save($compiledfilename, Template::compile(file_get_contents($filename)));
+?>
+```
+
+
+
+## Miscellaneous notes
+
+- requires PHP 5.4
+- there are no plans to extend template syntax. The API may change to improve support for hook development
+- there are no plans to add in-template inheritance, since it generally leads to duplication of `extends` directives (which need to be ignored when reusing templates anyways)
+
