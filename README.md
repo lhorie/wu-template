@@ -6,9 +6,9 @@ A "less-is-more" templating engine. It features minimalist syntax, extensibility
 
 ## Design goals
 
-- terse and predictable syntax, without ad-hoc features for specific tasks
+- terse and predictable syntax
 - extensibility and expressiveness
-- resonable performance
+- reasonable performance
 
 
 
@@ -88,9 +88,13 @@ Templates support static inclusion of other templates. To illustrate, we could s
 
 Templates do two types of variable binding: 
 
-- collection binding: to bind a collection, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
-  Attempting to bind anything that is not either an array or an object will cause errors. Note that these variable names must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/)
-- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template
+- collection binding: to bind an array or object to a template variable, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
+  
+  Binding anything that is not either an array or an object as an HTML attribute will cause errors. Likewise, binding collections anywhere else yields undefined behavior.
+  
+  Note that variable names for collection bindings must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/) (e.g., `:book-list:` is valid, `:books+magazines:` is not).
+  
+- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template, except as tag names.
 
 
 
@@ -107,7 +111,7 @@ This hook works like the else statement in Python:
 <div :else:>Be the first to say something</div>
 ```
 
-### `:raw: Hook`
+### `:raw:` Hook
 
 Templates escape HTML in values by default. This hook allows a developer to unescape it and print arbitrary markup.
 
@@ -149,17 +153,25 @@ class RawHook {
 
 These hooks must have a static method called `macro`, which takes a DOMNode as a parameter.
 
-`macro` hooks are meant to allow you to insert arbitrary PHP code at arbitrary points in the DOM. PHP code can be inserted by creating DOMCdataSection nodes.
+```php
+<?php
+class ElseHook {
+	static function macro(DOMNode $el) {
+		/*...*/
+	}
+}
+?>
+```
 
-Don't use DOMProcessingInstruction nodes to create PHP tags, since HTML processing instructions conform to the SGML standard and therefore aren't valid PHP tags.
+`macro` hooks are meant to allow you to insert arbitrary PHP code at arbitrary points in the DOM. To make DOM traversal more manageable, macros run after collection bindings have been expanded to PHP flow control code, but before scalar bindings have been expanded into PHP echo statement. PHP tags can be inserted by creating DOMCdataSection nodes.
 
-Also, don't modify DOM elements that are ancestors of the one passed as a parameter, as doing so is both unexpected by macro users and can cause conflicts with other macros.
+Note that modifying elements up on the DOM tree from the parameter element yields undefined behavior (and it breaks macro users' expectations, so just don't do it).
 
-To see an example of a `macro` hook, see elsehook.php
+To see an example of a `macro` hook, see [elsehook.php](https://github.com/lhorie/wu-template/blob/master/elsehook.php)
 
 ### A note on hook development
 
-Note that for `render()` calls, templates are only recompiled if they have been modified. While developing hooks, you can manually force compilation:
+Note that for `render()` calls, templates are only recompiled if they have been modified. While developing hooks, you can manually force compilation of test templates:
 
 ```php
 <?php
@@ -172,6 +184,6 @@ Template::save($compiledfilename, Template::compile(file_get_contents($filename)
 ## Miscellaneous notes
 
 - requires PHP 5.4
-- there are no plans to extend template syntax. The API may change to improve support for hook development
+- there are no plans to extend template syntax. The class API may change to improve support for hook development
 - there are no plans to add in-template inheritance, since it generally leads to duplication of `extends` directives (which need to be ignored when reusing templates anyways)
 
