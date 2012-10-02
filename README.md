@@ -112,7 +112,7 @@ If we wanted to allow HTML content in a chat message, we could do this:
 
 ## A note on data types and implementation details
 
-Templates do three types of variable binding: 
+Although the syntax looks very minimalist, there are some rules governing where certain variable types can occur. Templates do three types of variable binding: 
 
 - collection binding: to bind an array or object to a template variable, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
   
