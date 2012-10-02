@@ -84,20 +84,6 @@ Templates support static inclusion of other templates. To illustrate, we could s
 <small>:author:</small>
 ```
 
-### A note on data types and implementation details
-
-Templates do two types of variable binding: 
-
-- collection binding: to bind an array or object to a template variable, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
-  
-  Binding anything that is not either an array or an object as an HTML attribute will cause errors. Likewise, binding collections anywhere else yields undefined behavior.
-  
-  Note that variable names for collection bindings must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/) (e.g., `:book-list:` is valid, `:books+magazines:` is not).
-  
-- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template, except as tag names.
-
-
-
 ## Hooks
 
 Template functionality can be extended via hooks. There are two hooks out of the box: `:else:` and `:raw:`
@@ -121,6 +107,22 @@ If we wanted to allow HTML content in a chat message, we could do this:
 <blockquote :raw:>:content:</blockquote>
 <small>:author:</small>
 ```
+
+
+
+## A note on data types and implementation details
+
+Templates do three types of variable binding: 
+
+- collection binding: to bind an array or object to a template variable, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
+  
+  Binding anything that is not either an array or an object as an HTML attribute will cause errors. Likewise, binding collections anywhere else yields undefined behavior.
+  
+  Note that variable names for collection bindings must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/) (e.g., `:book-list:` is valid, `:books+magazines:` is not).
+  
+- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template, except as tag names.
+
+- hook binding: much like collection bindings, hooks must appear as attributes on HTML elements, e.g. `<div :else:></div>`.
 
 
 
@@ -163,7 +165,7 @@ class ElseHook {
 ?>
 ```
 
-`macro` hooks are meant to allow you to insert arbitrary PHP code at arbitrary points in the DOM. To make DOM traversal more manageable, macros run after collection bindings have been expanded to PHP flow control code, but before scalar bindings have been expanded into PHP echo statement. PHP tags can be inserted by creating DOMCdataSection nodes.
+`macro` hooks are meant to allow you to insert arbitrary PHP code at arbitrary points in the DOM. PHP tags can be inserted by creating DOMCdataSection nodes.
 
 Note that modifying elements up on the DOM tree from the parameter element yields undefined behavior (and it breaks macro users' expectations, so just don't do it).
 
@@ -171,7 +173,7 @@ To see an example of a `macro` hook, see [elsehook.php](https://github.com/lhori
 
 ### A note on hook development
 
-Note that for `render()` calls, templates are only recompiled if they have been modified. While developing hooks, you can manually force compilation of test templates:
+Note that for `Template::render()` calls, templates are only recompiled if they have been modified. While developing hooks, you can manually force compilation of test templates:
 
 ```php
 <?php
