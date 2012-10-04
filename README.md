@@ -116,13 +116,13 @@ Although the syntax looks very minimalist, there are some rules governing where 
 
 - collection binding: to bind an array or object to a template variable, the variable must appear as an attribute name on an HTML element, e.g. `<div :collection:></div>`.
   
-  Binding anything that is not either an array or an object as an HTML attribute will cause errors. Likewise, binding collections anywhere else yields undefined behavior.
+  Binding anything that is not either an array or an object as an HTML attribute will cause the variable binding to be ignored. Binding collections anywhere else yields undefined behavior.
   
   Note that variable names for collection bindings must conform to [XML attribute name rules](http://razzed.com/2009/01/30/valid-characters-in-attribute-names-in-htmlxml/) (e.g., `:book-list:` is valid, `:books+magazines:` is not).
   
-- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear mostly anywhere else in a template, except as tag names.
+- scalar binding: aka printable values (strings, numbers, included templates, etc) can appear as attribute values and within DOM text nodes.
 
-- hook binding: much like collection bindings, hooks must appear as attributes on HTML elements, e.g. `<div :else:></div>`.
+- hook binding: much like collection bindings, hooks must appear as attribute names on HTML elements, e.g. `<div :else:></div>`.
 
 
 
